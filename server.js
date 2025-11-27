@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { db } from "./database.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+
 
 dotenv.config();
 
@@ -50,9 +50,6 @@ app.post("/register", async (req, res) => {
 });
 
 
-// ----------------------------------------
-//  ROTA DE LOGIN
-// ----------------------------------------
 // ----------------------------------------
 //  ROTA DE LOGIN (SEM TOKEN)
 // ----------------------------------------
