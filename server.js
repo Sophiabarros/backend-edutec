@@ -23,8 +23,8 @@ app.post("/register", async (req, res) => {
         }
 
         // Verifica se e-mail já existe
-        const [existing] = await db.promise().query(
-            "SELECT * FROM users WHERE email = ?",
+        const { rows: existing } = await db.query(
+            "SELECT * FROM users WHERE email = $1",
             [email]
         );
 
@@ -36,8 +36,8 @@ app.post("/register", async (req, res) => {
         const hashed = await bcrypt.hash(password, 10);
 
         // Inserção no banco
-        await db.promise().query(
-            "INSERT INTO users (nome, email, password) VALUES (?, ?, ?)",
+        await db.query(
+            "INSERT INTO users (nome, email, password) VALUES ($1, $2, $3)",
             [nome, email, hashed]
         );
 
@@ -57,8 +57,8 @@ app.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const [rows] = await db.promise().query(
-            "SELECT * FROM users WHERE email = ?",
+        const { rows } = await db.query(
+            "SELECT * FROM users WHERE email = $1",
             [email]
         );
 
@@ -98,8 +98,8 @@ app.post("/score", async (req, res) => {
             return res.status(400).json({ message: "Dados inválidos." });
         }
 
-        await db.promise().query(
-            "INSERT INTO scores (user_id, score) VALUES (?, ?)",
+        await db.query(
+            "INSERT INTO scores (user_id, score) VALUES ($1, $2)",
             [user_id, score]
         );
 
@@ -117,11 +117,11 @@ app.post("/score", async (req, res) => {
 // ----------------------------------------
 app.get("/ranking", async (req, res) => {
     try {
-        const [rows] = await db.promise().query(
+        const { rows } = await db.query(
             `SELECT users.nome, MAX(scores.score) AS maior_pontuacao
              FROM scores
              INNER JOIN users ON scores.user_id = users.id
-             GROUP BY users.id
+             GROUP BY users.id, users.nome
              ORDER BY maior_pontuacao DESC
              LIMIT 3`
         );
@@ -136,10 +136,74 @@ app.get("/ranking", async (req, res) => {
 
 
 // ----------------------------------------
+//  PONTUAÇÃO DE UM USUÁRIO
+// ----------------------------------------
+app.get("/score/:user_id", async (req, res) => {
+    try {
+        const userId = Number(req.params.user_id);
+
+        if (!Number.isInteger(userId)) {
+            return res.status(400).json({ message: "Usuário inválido." });
+        }
+
+        const { rows: users } = await db.query(
+            "SELECT id, nome FROM users WHERE id = $1",
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "Usuário não encontrado." });
+        }
+
+        // Melhor pontuação, nº de partidas e posição no ranking geral
+        const { rows: [resumo] } = await db.query(
+            `WITH melhores AS (
+                 SELECT user_id, MAX(score) AS maior_pontuacao, COUNT(*)::int AS partidas
+                 FROM scores
+                 GROUP BY user_id
+             ),
+             posicoes AS (
+                 SELECT user_id, maior_pontuacao, partidas,
+                        RANK() OVER (ORDER BY maior_pontuacao DESC)::int AS posicao
+                 FROM melhores
+             )
+             SELECT maior_pontuacao, partidas, posicao FROM posicoes WHERE user_id = $1`,
+            [userId]
+        );
+
+        const { rows: historico } = await db.query(
+            `SELECT score, data FROM scores
+             WHERE user_id = $1
+             ORDER BY data DESC
+             LIMIT 10`,
+            [userId]
+        );
+
+        res.json({
+            nome: users[0].nome,
+            maior_pontuacao: resumo ? resumo.maior_pontuacao : null,
+            posicao: resumo ? resumo.posicao : null,
+            partidas: resumo ? resumo.partidas : 0,
+            historico
+        });
+
+    } catch (err) {
+        console.error("Erro em /score/:user_id:", err);
+        res.status(500).json({ message: "Erro interno no servidor." });
+    }
+});
+
+
+// ----------------------------------------
 //  INICIAR SERVIDOR
 // ----------------------------------------
-const PORT = 3333;
+// Na Vercel o app é exportado e rodado como função; localmente sobe com listen.
+if (!process.env.VERCEL) {
+    const PORT = process.env.PORT || 3333;
 
-app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
+    app.listen(PORT, () => {
+        console.log(`Servidor rodando em http://localhost:${PORT}`);
+    });
+}
+
+export default app;

@@ -1,18 +1,20 @@
-DROP DATABASE GEOIMPACTO;
-CREATE DATABASE GEOIMPACTO;
-USE GEOIMPACTO;
+-- PostgreSQL
+-- Pode rodar quantas vezes quiser: só cria o que ainda não existe
+-- e não apaga dados (importante, já que o banco fica online).
+-- Rode com: npm run db:setup
 
-CREATE TABLE users (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE scores (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
+CREATE TABLE IF NOT EXISTS scores (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
     score INT NOT NULL,
-    data DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_scores_user_id ON scores(user_id);
