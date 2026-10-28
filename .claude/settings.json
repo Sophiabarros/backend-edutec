@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "ClaudeInChromeDomain(vercel.com)"
-    ]
-  }
-}
