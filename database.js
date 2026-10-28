@@ -21,12 +21,38 @@ export const db = process.env.DATABASE_URL
         ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false
     });
 
-// Testa conexão (sem crash)
-db.connect()
-    .then((client) => {
-        console.log("Conexão com PostgreSQL bem sucedida!");
-        client.release();
-    })
-    .catch((err) => {
-        console.error("Erro ao conectar ao PostgreSQL:", err.code, err.message);
-    });
+// Mesmo conteúdo do tabelas.sql. Só cria o que não existe; não apaga dados.
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scores (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
+    score INT NOT NULL,
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_scores_user_id ON scores(user_id);
+`;
+
+// Cria as tabelas uma vez por instância do servidor.
+// Se falhar (banco fora do ar), tenta de novo na próxima chamada.
+let ready = null;
+
+export function initDb() {
+    if (!ready) {
+        ready = db.query(SCHEMA)
+            .then(() => console.log("Conexão com PostgreSQL OK, tabelas verificadas."))
+            .catch((err) => {
+                ready = null;
+                console.error("Erro ao conectar ao PostgreSQL:", err.code, err.message);
+                throw err;
+            });
+    }
+    return ready;
+}

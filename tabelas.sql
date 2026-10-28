@@ -1,7 +1,8 @@
 -- PostgreSQL
 -- Pode rodar quantas vezes quiser: só cria o que ainda não existe
 -- e não apaga dados (importante, já que o banco fica online).
--- Rode com: npm run db:setup
+-- O servidor cria estas tabelas sozinho na primeira requisição (database.js),
+-- mas também dá para rodar manualmente com: npm run db:setup
 
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,

@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { db } from "./database.js";
+import { db, initDb } from "./database.js";
 import bcrypt from "bcrypt";
 
 
@@ -10,6 +10,16 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Garante que as tabelas existem antes de qualquer rota usar o banco
+app.use(async (req, res, next) => {
+    try {
+        await initDb();
+        next();
+    } catch {
+        res.status(503).json({ message: "Banco de dados indisponível." });
+    }
+});
 
 // ----------------------------------------
 //  ROTA DE CADASTRO

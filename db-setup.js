@@ -1,14 +1,10 @@
 // Cria as tabelas no banco configurado no .env (DATABASE_URL ou DB_*).
-import fs from "fs";
-import { db } from "./database.js";
-
-const sql = fs.readFileSync(new URL("./tabelas.sql", import.meta.url), "utf-8");
+// O servidor também faz isso sozinho na primeira requisição.
+import { db, initDb } from "./database.js";
 
 try {
-    await db.query(sql);
-    console.log("Tabelas criadas/verificadas com sucesso!");
-} catch (err) {
-    console.error("Erro ao criar as tabelas:", err.message);
+    await initDb();
+} catch {
     process.exitCode = 1;
 } finally {
     await db.end();
